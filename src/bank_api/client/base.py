@@ -5,12 +5,16 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Mapping, Optional
 from urllib.parse import urljoin
 
-import requests
-
 from ..exceptions import ComdirectAPIError
+
+if TYPE_CHECKING:  # pragma: no cover - imported only for static analysis
+    from requests import Response, Session
+else:
+    Response = Any  # type: ignore[assignment]
+    Session = Any  # type: ignore[assignment]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,12 +35,17 @@ class BaseComdirectClient:
         self,
         *,
         base_url: str = "https://api.comdirect.de/api/",
-        session: Optional[requests.Session] = None,
+        session: Optional[Session] = None,
         retry_config: Optional[RetryConfig] = None,
         timeout: float = 30.0,
     ) -> None:
         self._base_url = base_url.rstrip("/") + "/"
-        self._session = session or requests.Session()
+        if session is None:
+            from requests import Session as RequestsSession
+
+            session = RequestsSession()
+
+        self._session = session
         self._retry_config = retry_config or RetryConfig()
         self._timeout = timeout
 
@@ -56,10 +65,10 @@ class BaseComdirectClient:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         json: Any = None,
-    ) -> requests.Response:
+    ) -> Response:
         url = urljoin(self._base_url, path.lstrip("/"))
         attempt = 0
-        last_response: Optional[requests.Response] = None
+        last_response: Optional[Response] = None
 
         prepared_params = self._prepare_params(params)
 
@@ -106,10 +115,10 @@ class BaseComdirectClient:
         response = self._request(method, path, params=params, headers=headers, json=json)
         return response.json()
 
-    def _should_retry(self, response: requests.Response) -> bool:
+    def _should_retry(self, response: Response) -> bool:
         return response.status_code in set(self._retry_config.status_forcelist)
 
-    def _calculate_delay(self, response: requests.Response, attempt: int) -> float:
+    def _calculate_delay(self, response: Response, attempt: int) -> float:
         if response.status_code == 429:
             retry_after = response.headers.get("Retry-After")
             if retry_after is not None:
@@ -119,7 +128,7 @@ class BaseComdirectClient:
                     pass
         return self._retry_config.backoff_factor * (2 ** (attempt - 1))
 
-    def _build_error(self, response: requests.Response) -> ComdirectAPIError:
+    def _build_error(self, response: Response) -> ComdirectAPIError:
         message = f"HTTP {response.status_code} error calling comdirect API"
         try:
             payload = response.json()

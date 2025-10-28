@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from dataclasses import dataclass, field
 
 from .common import (
     AccountInformation,
@@ -14,10 +14,12 @@ from .common import (
     DateString,
     EnumText,
     PagingInfo,
+    _coerce_optional_str,
 )
 
 
-class Account(BaseModel):
+@dataclass
+class Account:
     """Master data of an account."""
 
     accountId: Optional[str] = None
@@ -28,8 +30,25 @@ class Account(BaseModel):
     iban: Optional[str] = None
     creditLimit: Optional[AmountValue] = None
 
+    @classmethod
+    def model_validate(cls, value: object) -> Optional["Account"]:
+        if value is None or isinstance(value, cls):
+            return value
+        if isinstance(value, dict):
+            return cls(
+                accountId=_coerce_optional_str(value.get("accountId")),
+                accountDisplayId=_coerce_optional_str(value.get("accountDisplayId")),
+                currency=CurrencyString.model_validate(value.get("currency")),
+                clientId=_coerce_optional_str(value.get("clientId")),
+                accountType=EnumText.model_validate(value.get("accountType")),
+                iban=_coerce_optional_str(value.get("iban")),
+                creditLimit=AmountValue.model_validate(value.get("creditLimit")),
+            )
+        raise TypeError(f"Cannot convert {value!r} to Account")
 
-class AccountBalance(BaseModel):
+
+@dataclass
+class AccountBalance:
     """Account information, including cash balance and buying power."""
 
     account: Optional[Account] = None
@@ -39,16 +58,55 @@ class AccountBalance(BaseModel):
     availableCashAmount: Optional[AmountValue] = None
     availableCashAmountEUR: Optional[AmountValue] = None
 
+    @classmethod
+    def model_validate(cls, value: object) -> "AccountBalance":
+        if isinstance(value, cls):
+            return value
+        if isinstance(value, dict):
+            return cls(
+                account=Account.model_validate(value.get("account")),
+                accountId=_coerce_optional_str(value.get("accountId")),
+                balance=AmountValue.model_validate(value.get("balance")),
+                balanceEUR=AmountValue.model_validate(value.get("balanceEUR")),
+                availableCashAmount=AmountValue.model_validate(
+                    value.get("availableCashAmount")
+                ),
+                availableCashAmountEUR=AmountValue.model_validate(
+                    value.get("availableCashAmountEUR")
+                ),
+            )
+        raise TypeError(f"Cannot convert {value!r} to AccountBalance")
 
-class ListResourceAccountBalance(BaseModel):
+
+@dataclass
+class ListResourceAccountBalance:
     """List wrapper for account balances."""
 
     paging: Optional[PagingInfo] = None
     aggregated: Optional[AggregatedInfo] = None
-    values: List[AccountBalance] = Field(default_factory=list)
+    values: List[AccountBalance] = field(default_factory=list)
+
+    @classmethod
+    def model_validate(cls, value: object) -> "ListResourceAccountBalance":
+        if isinstance(value, cls):
+            return value
+        if isinstance(value, dict):
+            return cls(
+                paging=PagingInfo.model_validate(value.get("paging")),
+                aggregated=AggregatedInfo.model_validate(value.get("aggregated")),
+                values=[
+                    AccountBalance.model_validate(item)
+                    for item in value.get("values", [])
+                    if item is not None
+                ],
+            )
+        raise TypeError(
+            f"Cannot convert {value!r} to ListResourceAccountBalance"
+        )
 
 
-class AccountTransaction(BaseModel):
+@dataclass
+class AccountTransaction:
     """Model for an account transaction."""
 
     reference: Optional[str] = None
@@ -66,10 +124,56 @@ class AccountTransaction(BaseModel):
     remittanceInfo: Optional[str] = None
     transactionType: Optional[EnumText] = None
 
+    @classmethod
+    def model_validate(cls, value: object) -> "AccountTransaction":
+        if isinstance(value, cls):
+            return value
+        if isinstance(value, dict):
+            return cls(
+                reference=_coerce_optional_str(value.get("reference")),
+                bookingStatus=_coerce_optional_str(value.get("bookingStatus")),
+                bookingDate=DateString.model_validate(value.get("bookingDate")),
+                amount=AmountValue.model_validate(value.get("amount")),
+                remitter=AccountInformation.model_validate(value.get("remitter")),
+                deptor=AccountInformation.model_validate(value.get("deptor")),
+                creditor=AccountInformation.model_validate(value.get("creditor")),
+                valutaDate=_coerce_optional_str(value.get("valutaDate")),
+                directDebitCreditorId=_coerce_optional_str(
+                    value.get("directDebitCreditorId")
+                ),
+                directDebitMandateId=_coerce_optional_str(
+                    value.get("directDebitMandateId")
+                ),
+                endToEndReference=_coerce_optional_str(value.get("endToEndReference")),
+                newTransaction=value.get("newTransaction"),
+                remittanceInfo=_coerce_optional_str(value.get("remittanceInfo")),
+                transactionType=EnumText.model_validate(value.get("transactionType")),
+            )
+        raise TypeError(f"Cannot convert {value!r} to AccountTransaction")
 
-class ListResourceAccountTransaction(BaseModel):
+
+@dataclass
+class ListResourceAccountTransaction:
     """List wrapper for account transactions."""
 
     paging: Optional[PagingInfo] = None
     aggregated: Optional[AggregatedInfo] = None
-    values: List[AccountTransaction] = Field(default_factory=list)
+    values: List[AccountTransaction] = field(default_factory=list)
+
+    @classmethod
+    def model_validate(cls, value: object) -> "ListResourceAccountTransaction":
+        if isinstance(value, cls):
+            return value
+        if isinstance(value, dict):
+            return cls(
+                paging=PagingInfo.model_validate(value.get("paging")),
+                aggregated=AggregatedInfo.model_validate(value.get("aggregated")),
+                values=[
+                    AccountTransaction.model_validate(item)
+                    for item in value.get("values", [])
+                    if item is not None
+                ],
+            )
+        raise TypeError(
+            f"Cannot convert {value!r} to ListResourceAccountTransaction"
+        )
