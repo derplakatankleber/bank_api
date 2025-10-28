@@ -1,5 +1,6 @@
 """Client and data models for the comdirect REST API."""
 
+from .api import create_app
 from .client.banking import BankingClient
 from .client.session import SessionClient
 from .client.base import RetryConfig
@@ -33,4 +34,5 @@ __all__ = [
     "Transaction",
     "Position",
     "SyncLog",
+    "create_app",
 ]
