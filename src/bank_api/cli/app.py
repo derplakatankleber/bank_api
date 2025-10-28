@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence, cast
 
-import requests
+import requests  # type: ignore[import-untyped]
 import typer
 from rich import box
 from rich.console import Console

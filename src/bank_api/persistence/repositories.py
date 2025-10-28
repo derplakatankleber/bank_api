@@ -113,6 +113,8 @@ def _parse_date(date_value: Any) -> datetime | None:
     if not date_value:
         return None
     if isinstance(date_value, DateString):
+        if date_value.date is None:
+            return None
         return datetime.combine(date_value.date, datetime.min.time())
     try:
         return datetime.fromisoformat(str(date_value))

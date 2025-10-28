@@ -36,6 +36,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-ra"
+pythonpath = ["src"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
@@ -81,7 +82,3 @@ python_version = "3.10"
 warn_unused_configs = true
 ignore_missing_imports = true
 exclude = ["comdirect_docu"]
-plugins = ["pydantic.mypy"]
-
-[tool.mypy-plugins]
-pydantic_version = "v2"
