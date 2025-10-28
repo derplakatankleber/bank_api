@@ -12,9 +12,15 @@ dependencies = [
     "requests>=2.31",
     "SQLAlchemy>=2.0",
     "APScheduler>=3.10",
+    "fastapi>=0.110,<1.0",
+    "typer>=0.9,<1.0",
+    "rich>=13.0,<14.0",
 ]
 
 dynamic = ["readme"]
+
+[project.scripts]
+bank-api = "bank_api.cli.app:run_cli"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
