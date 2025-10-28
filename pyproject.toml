@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bank_api"
+version = "0.1.0"
+description = "Lightweight client and models for the comdirect REST API"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=1.10,<2.0",
+    "requests>=2.31",
+]
+
+dynamic = ["readme"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
