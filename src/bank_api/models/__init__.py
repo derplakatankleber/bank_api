@@ -1,4 +1,5 @@
 """Pydantic models that mirror the comdirect REST API schema."""
+
 from .common import (
     AccountInformation,
     AggregatedInfo,

@@ -1,4 +1,5 @@
 """Command line interface for interacting with the REST API."""
+
 from __future__ import annotations
 
 import contextlib
@@ -6,12 +7,11 @@ import csv
 import json
 import os
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping, Sequence, cast
 
 import requests
 import typer
 from rich import box
-from rich.bar import Bar
 from rich.console import Console
 from rich.table import Table
 
@@ -49,7 +49,7 @@ def save_config(config: dict[str, Any]) -> None:
 def load_config() -> dict[str, Any]:
     if not CONFIG_PATH.exists():
         return {}
-    return json.loads(CONFIG_PATH.read_text())
+    return cast(dict[str, Any], json.loads(CONFIG_PATH.read_text()))
 
 
 def resolve_api_url(explicit: str | None = None) -> str:
@@ -59,8 +59,8 @@ def resolve_api_url(explicit: str | None = None) -> str:
     if env_url:
         return env_url.rstrip("/")
     config = load_config()
-    url = config.get("api_url", DEFAULT_API_URL)
-    return str(url).rstrip("/")
+    url = str(config.get("api_url", DEFAULT_API_URL))
+    return url.rstrip("/")
 
 
 def resolve_api_key(explicit: str | None = None) -> str:
@@ -87,7 +87,7 @@ def _request(
     endpoint: str,
     *,
     api_key: str,
-    params: dict[str, Any] | None = None,
+    params: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     response = requests.request(
         method,
@@ -105,7 +105,25 @@ def _request(
         raise CLIError(f"Request failed: {detail}") from exc
     except requests.RequestException as exc:  # pragma: no cover - defensive programming
         raise CLIError(f"Request failed: {exc}") from exc
-    return response.json()
+    return cast(dict[str, Any], response.json())
+
+
+def _safe_float(value: Any) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _build_bar(value: float, max_amount: float, width: int = 30) -> str:
+    if max_amount <= 0:
+        return ""
+    normalized = min(abs(value) / max_amount, 1.0)
+    filled = max(0, int(round(normalized * width)))
+    bar = "█" * filled
+    if value < 0:
+        return f"-{bar}"
+    return bar
 
 
 def _render_balances_table(data: Iterable[dict[str, Any]]) -> None:
@@ -121,16 +139,16 @@ def _render_balances_table(data: Iterable[dict[str, Any]]) -> None:
 
 
 def _render_balances_chart(data: Iterable[dict[str, Any]]) -> None:
-    amounts = [abs(item.get("amount") or 0) for item in data]
+    amounts = [_safe_float(item.get("amount")) for item in data]
     if not any(amounts):
         console.print("No numerical data available for chart rendering.")
         return
     max_amount = max(amounts)
     console.print("\n[bold]Balance distribution[/bold]")
     for item in data:
-        value = item.get("amount") or 0
-        bar = Bar(size=30, begin=-max_amount, end=max_amount, value=value)
-        console.print(f"{str(item.get('account_id') or '—'):>15} {bar} {value:,.2f}")
+        value = _safe_float(item.get("amount"))
+        bar = _build_bar(value, max_amount)
+        console.print(f"{str(item.get('account_id') or '—'):>15} {bar:<30} {value:,.2f}")
 
 
 def _render_transactions_table(data: Iterable[dict[str, Any]]) -> None:
@@ -154,16 +172,16 @@ def _render_transactions_table(data: Iterable[dict[str, Any]]) -> None:
 
 def _render_transactions_chart(data: Iterable[dict[str, Any]]) -> None:
     console.print("\n[bold]Transaction amounts[/bold]")
-    amounts = [abs(item.get("amount", {}).get("value") or 0) for item in data]
+    amounts = [_safe_float(item.get("amount", {}).get("value")) for item in data]
     if not any(amounts):
         console.print("No numerical data available for chart rendering.")
         return
     max_amount = max(amounts)
     for item in data:
-        value = item.get("amount", {}).get("value") or 0
+        value = _safe_float(item.get("amount", {}).get("value"))
         label = str(item.get("booking_date") or item.get("reference") or "—")
-        bar = Bar(size=30, begin=-max_amount, end=max_amount, value=value)
-        console.print(f"{label:>15} {bar} {value:,.2f}")
+        bar = _build_bar(value, max_amount)
+        console.print(f"{label:>15} {bar:<30} {value:,.2f}")
 
 
 def _export_csv(path: Path, rows: Iterable[dict[str, Any]]) -> None:
@@ -219,13 +237,16 @@ def fetch_balances(
         raise typer.Exit(code=1)
 
     data = payload.get("data", [])
-    _render_balances_table(data)
+    if not isinstance(data, Sequence):
+        raise CLIError("Unexpected response format: 'data' is not a list")
+    balance_rows = [cast(dict[str, Any], item) for item in data]
+    _render_balances_table(balance_rows)
 
     if show_chart:
-        _render_balances_chart(data)
+        _render_balances_chart(balance_rows)
 
     if output_csv:
-        _export_csv(output_csv, data)
+        _export_csv(output_csv, balance_rows)
 
 
 @app.command("export-transactions")
@@ -253,6 +274,9 @@ def export_transactions(
         raise typer.Exit(code=1)
 
     data = payload.get("data", [])
+    if not isinstance(data, Sequence):
+        raise CLIError("Unexpected response format: 'data' is not a list")
+    transaction_rows = [cast(dict[str, Any], item) for item in data]
     flattened = [
         {
             "booking_date": item.get("booking_date"),
@@ -262,13 +286,13 @@ def export_transactions(
             "amount": item.get("amount", {}).get("value"),
             "currency": item.get("amount", {}).get("currency"),
         }
-        for item in data
+        for item in transaction_rows
     ]
-    _render_transactions_table(data)
+    _render_transactions_table(transaction_rows)
     _export_csv(output_csv, flattened)
 
     if show_chart:
-        _render_transactions_chart(data)
+        _render_transactions_chart(transaction_rows)
 
 
 def run_cli() -> None:

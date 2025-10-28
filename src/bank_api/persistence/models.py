@@ -1,4 +1,5 @@
 """SQLAlchemy models for persisted data."""
+
 from __future__ import annotations
 
 from datetime import datetime

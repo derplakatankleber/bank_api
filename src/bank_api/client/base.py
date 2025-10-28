@@ -1,4 +1,5 @@
 """Base client with retry/backoff handling."""
+
 from __future__ import annotations
 
 import logging
@@ -20,9 +21,7 @@ class RetryConfig:
 
     max_attempts: int = 3
     backoff_factor: float = 0.5
-    status_forcelist: Iterable[int] = field(
-        default_factory=lambda: (429, 500, 502, 503, 504)
-    )
+    status_forcelist: Iterable[int] = field(default_factory=lambda: (429, 500, 502, 503, 504))
 
 
 class BaseComdirectClient:

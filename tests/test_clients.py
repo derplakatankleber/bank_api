@@ -11,7 +11,9 @@ from bank_api.exceptions import ComdirectAPIError
 
 
 class FakeResponse:
-    def __init__(self, status_code: int, json_data: Any = None, headers: Dict[str, str] | None = None) -> None:
+    def __init__(
+        self, status_code: int, json_data: Any = None, headers: Dict[str, str] | None = None
+    ) -> None:
         self.status_code = status_code
         self._json_data = json_data
         self.headers = headers or {}
@@ -45,6 +47,7 @@ class StubSession:
         pass
 
 
+@pytest.mark.mocked
 def test_get_account_balances_parses_response(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = {
         "paging": {"index": 0, "matches": 1},
@@ -76,6 +79,7 @@ def test_get_account_balances_parses_response(monkeypatch: pytest.MonkeyPatch) -
     assert call["params"] == {"without-attr": "account"}
 
 
+@pytest.mark.mocked
 def test_retry_on_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     responses = [
         FakeResponse(429, {"message": "slow down"}, headers={"Retry-After": "1"}),
@@ -94,6 +98,7 @@ def test_retry_on_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     assert sleeps == [1.0]
 
 
+@pytest.mark.mocked
 def test_raises_error_after_retries(monkeypatch: pytest.MonkeyPatch) -> None:
     responses = [
         FakeResponse(500, {"error": "fail"}),
@@ -101,7 +106,9 @@ def test_raises_error_after_retries(monkeypatch: pytest.MonkeyPatch) -> None:
         FakeResponse(500, {"error": "fail"}),
     ]
     session = StubSession(responses)
-    client = BankingClient(session=session, retry_config=RetryConfig(max_attempts=3, backoff_factor=0.5))
+    client = BankingClient(
+        session=session, retry_config=RetryConfig(max_attempts=3, backoff_factor=0.5)
+    )
 
     sleeps: List[float] = []
     monkeypatch.setattr("bank_api.client.base.time.sleep", lambda duration: sleeps.append(duration))
@@ -114,6 +121,7 @@ def test_raises_error_after_retries(monkeypatch: pytest.MonkeyPatch) -> None:
     assert sleeps == [0.5, 1.0]
 
 
+@pytest.mark.mocked
 def test_session_client_deserializes_list() -> None:
     payload = [
         {"id": 1, "identifier": "abc", "sessionTanActive": True, "activated2FA": False},

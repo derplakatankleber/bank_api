@@ -1,13 +1,15 @@
 """Repository classes wrapping SQLAlchemy sessions."""
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Sequence
+from typing import Any, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models.banking import AccountBalance, AccountTransaction
+from ..models.common import DateString
 from .models import Position, SyncLog, Transaction
 
 
@@ -17,7 +19,9 @@ class TransactionRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def upsert_transactions(self, transactions: Sequence[AccountTransaction], account_id: str) -> None:
+    def upsert_transactions(
+        self, transactions: Sequence[AccountTransaction], account_id: str
+    ) -> None:
         for transaction in transactions:
             external_id = transaction.reference or transaction.endToEndReference
             existing = None
@@ -26,9 +30,10 @@ class TransactionRepository:
                     select(Transaction).where(Transaction.external_id == external_id)
                 )
             amount_value = None
-            if getattr(transaction.amount, "value", None) is not None:
-                amount_value = float(transaction.amount.value)
-            currency = getattr(transaction.amount, "unit", None)
+            amount = transaction.amount
+            if amount and amount.value is not None:
+                amount_value = float(amount.value)
+            currency = amount.unit if amount and amount.unit else None
             if existing:
                 existing.raw = transaction.model_dump()
                 existing.amount = amount_value
@@ -89,7 +94,9 @@ class SyncLogRepository:
         self._session = session
 
     def create(self, job_name: str, status: str, detail: str | None = None) -> SyncLog:
-        entry = SyncLog(job_name=job_name, status=status, detail=detail, started_at=datetime.utcnow())
+        entry = SyncLog(
+            job_name=job_name, status=status, detail=detail, started_at=datetime.utcnow()
+        )
         self._session.add(entry)
         return entry
 
@@ -102,11 +109,13 @@ class SyncLogRepository:
         return self._session.get(SyncLog, log_id)
 
 
-def _parse_date(date_str: str | None) -> datetime | None:
-    if not date_str:
+def _parse_date(date_value: Any) -> datetime | None:
+    if not date_value:
         return None
+    if isinstance(date_value, DateString):
+        return datetime.combine(date_value.date, datetime.min.time())
     try:
-        return datetime.fromisoformat(date_str)
+        return datetime.fromisoformat(str(date_value))
     except ValueError:
         return None
 

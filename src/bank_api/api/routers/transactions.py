@@ -1,12 +1,14 @@
 """Transaction related API routes."""
+
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence, cast
 
 from fastapi import APIRouter, Depends, Header, Query
 
 from ...models.banking import AccountTransaction
+from ...models.common import DateString
 from ..auth import require_api_key
 from ..dependencies import get_transaction_service
 from ..schemas import TransactionAmount, TransactionListResponse, TransactionRecord
@@ -54,6 +56,8 @@ def _parse_date(value: Any) -> date | None:
         return None
     if isinstance(value, date):
         return value
+    if isinstance(value, DateString):
+        return value.date
     if hasattr(value, "date"):
         return value.date  # DateString compatibility
     try:
@@ -71,12 +75,16 @@ def _to_record(transaction: AccountTransaction) -> TransactionRecord:
         booking_date=booking_date,
         valuta_date=valuta_date,
         remittance_info=transaction.remittanceInfo,
-        transaction_type=(transaction.transactionType.text if transaction.transactionType else None),
+        transaction_type=(
+            transaction.transactionType.text if transaction.transactionType else None
+        ),
         amount=amount,
     )
 
 
-def _map_transactions(transactions: Iterable[AccountTransaction | dict[str, Any]]) -> list[TransactionRecord]:
+def _map_transactions(
+    transactions: Iterable[AccountTransaction | dict[str, Any]],
+) -> list[TransactionRecord]:
     return [_to_record(_coerce_transaction(item)) for item in transactions]
 
 
@@ -95,27 +103,37 @@ def list_transactions(
     """Return transactions for the requested account."""
 
     refreshed = False
+    transactions: Sequence[AccountTransaction | dict[str, Any]]
     if refresh:
-        transactions = transaction_service.refresh_transactions(
-            account_id,
-            headers=forward_headers or None,
-            transaction_state=transaction_state,
-            transaction_direction=transaction_direction,
-            paging_first=paging_first,
-            with_attr=with_attr,
-        ).values
-        refreshed = True
-    else:
-        transactions = transaction_service.list_cached_transactions(account_id)
-        if not transactions:
-            transactions = transaction_service.refresh_transactions(
+        transactions = cast(
+            list[AccountTransaction],
+            transaction_service.refresh_transactions(
                 account_id,
                 headers=forward_headers or None,
                 transaction_state=transaction_state,
                 transaction_direction=transaction_direction,
                 paging_first=paging_first,
                 with_attr=with_attr,
-            ).values
+            ).values,
+        )
+        refreshed = True
+    else:
+        transactions = cast(
+            Sequence[AccountTransaction | dict[str, Any]],
+            transaction_service.list_cached_transactions(account_id),
+        )
+        if not transactions:
+            transactions = cast(
+                list[AccountTransaction],
+                transaction_service.refresh_transactions(
+                    account_id,
+                    headers=forward_headers or None,
+                    transaction_state=transaction_state,
+                    transaction_direction=transaction_direction,
+                    paging_first=paging_first,
+                    with_attr=with_attr,
+                ).values,
+            )
             refreshed = True
 
     records = _map_transactions(transactions)
@@ -135,13 +153,16 @@ def refresh_transactions(
 ) -> TransactionListResponse:
     """Trigger a refresh and return the updated transactions."""
 
-    transactions = transaction_service.refresh_transactions(
-        account_id,
-        headers=forward_headers or None,
-        transaction_state=transaction_state,
-        transaction_direction=transaction_direction,
-        paging_first=paging_first,
-        with_attr=with_attr,
-    ).values
+    transactions = cast(
+        list[AccountTransaction],
+        transaction_service.refresh_transactions(
+            account_id,
+            headers=forward_headers or None,
+            transaction_state=transaction_state,
+            transaction_direction=transaction_direction,
+            paging_first=paging_first,
+            with_attr=with_attr,
+        ).values,
+    )
     records = _map_transactions(transactions)
     return TransactionListResponse(data=records, refreshed=True)

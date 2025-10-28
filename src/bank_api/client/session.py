@@ -1,4 +1,5 @@
 """Client for session endpoints."""
+
 from __future__ import annotations
 
 from typing import List, Optional

@@ -1,4 +1,5 @@
 """Pydantic schemas exposed via the REST API."""
+
 from __future__ import annotations
 
 from datetime import date
