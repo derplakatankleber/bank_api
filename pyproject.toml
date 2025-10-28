@@ -8,8 +8,10 @@ version = "0.1.0"
 description = "Lightweight client and models for the comdirect REST API"
 requires-python = ">=3.10"
 dependencies = [
-    "pydantic>=1.10,<2.0",
+    "pydantic>=2.0,<3.0",
     "requests>=2.31",
+    "SQLAlchemy>=2.0",
+    "APScheduler>=3.10",
 ]
 
 dynamic = ["readme"]
