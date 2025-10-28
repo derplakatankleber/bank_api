@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Dashboard &mdash; Bank Control Center{% endblock %}
+{% block content %}
+<section class="grid">
+  <article class="card">
+    <h2>Configuration</h2>
+    <dl>
+      <dt>API Key</dt>
+      <dd>{{ configuration.api_key or 'not set' }}</dd>
+      <dt>User ID</dt>
+      <dd>{{ configuration.user_id or 'not set' }}</dd>
+      <dt>Account ID</dt>
+      <dd>{{ configuration.account_id or 'not set' }}</dd>
+    </dl>
+    <a href="/configuration" class="button">Update configuration</a>
+  </article>
+
+  <article class="card">
+    <h2>Recent Orders</h2>
+    {% if orders %}
+    <ul class="order-list">
+      {% for order in orders %}
+      <li>
+        <strong>{{ order.instrument }}</strong>
+        <span class="meta">{{ order.side|capitalize }} {{ order.quantity }} @ {{ order.limit_price or 'Market' }}</span>
+        <span class="status status-{{ order.status }}">{{ order.status|capitalize }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <a class="button" href="/orders">View all orders</a>
+    {% else %}
+    <p>No orders captured yet.</p>
+    <a class="button" href="/orders/new">Create order</a>
+    {% endif %}
+  </article>
+
+  <article class="card wide">
+    <h2>Account Balances</h2>
+    {% if balances %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th>Amount</th>
+          <th>Currency</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for balance in balances %}
+        <tr>
+          <td>{{ balance.account_id or 'n/a' }}</td>
+          <td>{{ balance.amount or 'n/a' }}</td>
+          <td>{{ balance.currency or 'n/a' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <a class="button" href="/depot">View depot</a>
+    {% else %}
+    <p>No cached balances available. Run a sync from the CLI to populate data.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

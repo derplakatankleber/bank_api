@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Depot &mdash; Bank Control Center{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Depot overview</h2>
+  {% if balances %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Account</th>
+        <th>Amount</th>
+        <th>Currency</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for balance in balances %}
+      <tr>
+        <td>{{ balance.account_id or 'n/a' }}</td>
+        <td>{{ balance.amount or 'n/a' }}</td>
+        <td>{{ balance.currency or 'n/a' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="totals">
+    <h3>Totals</h3>
+    <ul>
+      {% for currency, amount in totals.items() %}
+      <li>{{ currency }} {{ '%.2f'|format(amount) }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% else %}
+  <p>No balances available. Import data using the CLI synchronisation commands.</p>
+  {% endif %}
+</section>
+{% endblock %}

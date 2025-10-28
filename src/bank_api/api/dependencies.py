@@ -9,6 +9,8 @@ from fastapi import Depends
 from ..client.banking import BankingClient
 from ..persistence.database import DatabaseSessionManager
 from ..services.accounts import AccountService
+from ..services.configuration import ConfigurationService
+from ..services.orders import OrderService
 from ..services.transactions import TransactionService
 
 
@@ -42,3 +44,19 @@ def get_transaction_service(
     """Provide a transaction service instance for request handlers."""
 
     return TransactionService(client, session_manager=session_manager)
+
+
+def get_configuration_service(
+    session_manager: DatabaseSessionManager = Depends(get_session_manager),
+) -> ConfigurationService:
+    """Provide a configuration service instance."""
+
+    return ConfigurationService(session_manager=session_manager)
+
+
+def get_order_service(
+    session_manager: DatabaseSessionManager = Depends(get_session_manager),
+) -> OrderService:
+    """Provide an order service instance."""
+
+    return OrderService(session_manager=session_manager)

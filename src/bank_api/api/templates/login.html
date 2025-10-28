@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Login &mdash; Bank Control Center</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body class="login-body">
+    <section class="login-panel">
+      <h1>Bank Control Center</h1>
+      <p class="intro">Connect your comdirect credentials to begin.</p>
+      {% if error %}
+      <div class="alert alert-error">{{ error }}</div>
+      {% endif %}
+      <form method="post" action="/login" class="login-form">
+        <label>
+          API Key
+          <input type="text" name="api_key" value="{{ configuration.api_key or '' }}" required />
+        </label>
+        <label>
+          User ID
+          <input type="text" name="user_id" value="{{ configuration.user_id or '' }}" required />
+        </label>
+        <label>
+          Account ID
+          <input type="text" name="account_id" value="{{ configuration.account_id or '' }}" required />
+        </label>
+        <button type="submit">Login</button>
+      </form>
+    </section>
+  </body>
+</html>

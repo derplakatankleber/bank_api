@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from ..models.banking import AccountBalance, AccountTransaction
 from ..models.common import DateString
-from .models import Position, SyncLog, Transaction
+from .models import Order, Position, Setting, SyncLog, Transaction
 
 
 class TransactionRepository:
@@ -107,6 +107,68 @@ class SyncLogRepository:
 
     def get(self, log_id: int) -> SyncLog | None:
         return self._session.get(SyncLog, log_id)
+
+
+class SettingsRepository:
+    """Persist simple key/value configuration entries."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get(self, key: str) -> Setting | None:
+        return self._session.scalar(select(Setting).where(Setting.key == key))
+
+    def set(self, key: str, value: str | None) -> Setting:
+        setting = self.get(key)
+        if setting:
+            setting.value = value
+        else:
+            setting = Setting(key=key, value=value)
+            self._session.add(setting)
+        return setting
+
+    def list_all(self) -> list[Setting]:
+        return list(self._session.scalars(select(Setting)))
+
+
+class OrderRepository:
+    """Manage lifecycle of locally stored orders."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def list_orders(self) -> list[Order]:
+        stmt = select(Order).order_by(Order.created_at.desc())
+        return list(self._session.scalars(stmt))
+
+    def get(self, order_id: int) -> Order | None:
+        return self._session.get(Order, order_id)
+
+    def create(
+        self,
+        *,
+        instrument: str,
+        side: str,
+        order_type: str,
+        quantity: float,
+        limit_price: float | None,
+        notes: str | None = None,
+    ) -> Order:
+        order = Order(
+            instrument=instrument,
+            side=side,
+            order_type=order_type,
+            quantity=quantity,
+            limit_price=limit_price,
+            notes=notes,
+        )
+        self._session.add(order)
+        self._session.flush()
+        return order
+
+    def update_status(self, order: Order, status: str) -> Order:
+        order.status = status
+        return order
 
 
 def _parse_date(date_value: Any) -> datetime | None:

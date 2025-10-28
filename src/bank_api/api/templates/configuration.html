@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Configuration &mdash; Bank Control Center{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Connection settings</h2>
+  {% if saved %}
+  <div class="alert alert-success">Configuration saved.</div>
+  {% endif %}
+  <form method="post" action="/configuration" class="form-grid">
+    <label>
+      API Key
+      <input type="text" name="api_key" value="{{ configuration.api_key or '' }}" />
+    </label>
+    <label>
+      User ID
+      <input type="text" name="user_id" value="{{ configuration.user_id or '' }}" />
+    </label>
+    <label>
+      Account ID
+      <input type="text" name="account_id" value="{{ configuration.account_id or '' }}" />
+    </label>
+    <button type="submit">Save changes</button>
+  </form>
+</section>
+{% endblock %}
