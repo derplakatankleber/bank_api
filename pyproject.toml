@@ -6,17 +6,20 @@ build-backend = "setuptools.build_meta"
 name = "bank_api"
 version = "0.1.0"
 description = "Lightweight client and models for the comdirect REST API"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
-    "pydantic>=2.0,<3.0",
-    "requests>=2.31",
-    "SQLAlchemy>=2.0",
-    "APScheduler>=3.10",
-    "fastapi>=0.110,<1.0",
-    "typer>=0.9,<1.0",
-    "rich>=13.0,<14.0",
-    "uvicorn[standard]>=0.27,<0.28",
-    "psycopg2-binary>=2.9",
+    "pydantic>=2.12.3,<3.0",
+    "requests>=2.32.5,<3.0",
+    "SQLAlchemy>=2.0.44,<3.0",
+    "APScheduler>=3.11.0,<4.0",
+    "fastapi>=0.120.1,<1.0",
+    "itsdangerous>=2.2.0,<3.0",
+    "jinja2>=3.1.6,<4.0",
+    "python-multipart>=0.0.20,<0.1",
+    "typer>=0.20.0,<1.0",
+    "rich>=14.2.0,<15.0",
+    "uvicorn[standard]>=0.38.0,<1.0",
+    "psycopg2-binary>=2.9.11,<3.0",
 ]
 
 dynamic = ["readme"]
@@ -36,6 +39,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-ra"
+pythonpath = ["src"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
@@ -46,18 +50,18 @@ markers = [
 
 [project.optional-dependencies]
 dev = [
-    "black>=24.4",
-    "mypy>=1.10",
-    "pytest>=8.2",
-    "pytest-mock>=3.12",
-    "requests-mock>=1.12",
-    "ruff>=0.4",
-    "types-requests>=2.32",
+    "black>=25.9.0,<26.0",
+    "mypy>=1.18.2,<2.0",
+    "pytest>=8.4.2,<9.0",
+    "pytest-mock>=3.15.1,<4.0",
+    "requests-mock>=1.12.1,<2.0",
+    "ruff>=0.14.2,<0.15.0",
+    "types-requests>=2.32.4.20250913,<3.0",
 ]
 
 [tool.black]
 line-length = 100
-target-version = ["py310"]
+target-version = ["py312"]
 exclude = """
 /(
     comdirect_docu
@@ -66,7 +70,7 @@ exclude = """
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py312"
 exclude = ["comdirect_docu"]
 
 [tool.ruff.lint]
@@ -77,7 +81,7 @@ ignore = ["E501"]
 known-first-party = ["bank_api"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 warn_unused_configs = true
 ignore_missing_imports = true
 exclude = ["comdirect_docu"]

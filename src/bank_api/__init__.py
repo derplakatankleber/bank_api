@@ -1,6 +1,5 @@
 """Client and data models for the comdirect REST API."""
 
-from .api import create_app
 from .client.banking import BankingClient
 from .client.session import SessionClient
 from .client.base import RetryConfig
@@ -17,6 +16,15 @@ from .persistence import (
     TransactionRepository,
 )
 from .services import AccountService, TransactionService
+
+
+def create_app(*args, **kwargs):
+    """Create and configure the FastAPI application."""
+
+    from .api import create_app as _create_app
+
+    return _create_app(*args, **kwargs)
+
 
 __all__ = [
     "BankingClient",

@@ -5,7 +5,16 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, Float, Integer, Numeric, String, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    DateTime,
+    Float,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -57,4 +66,32 @@ class SyncLog(Base):
     detail: Mapped[str | None] = mapped_column(String(1024))
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow)
+
+
+class Setting(Base):
+    """Persisted key/value configuration entries."""
+
+    __tablename__ = "settings"
+    __table_args__ = (UniqueConstraint("key", name="uq_settings_key"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    key: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    value: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow)
+
+
+class Order(Base):
+    """Persisted representation of a simple securities order."""
+
+    __tablename__ = "orders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    instrument: Mapped[str] = mapped_column(String(255))
+    side: Mapped[str] = mapped_column(String(16))
+    order_type: Mapped[str] = mapped_column(String(32))
+    quantity: Mapped[float] = mapped_column(Float)
+    limit_price: Mapped[float | None] = mapped_column(Numeric(16, 4))
+    status: Mapped[str] = mapped_column(String(32), default="pending")
+    notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow)
