@@ -1,4 +1,5 @@
 """Authentication helpers for the REST API."""
+
 from __future__ import annotations
 
 import os

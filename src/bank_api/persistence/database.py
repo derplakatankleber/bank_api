@@ -1,4 +1,5 @@
 """Database helpers for persistence layer."""
+
 from __future__ import annotations
 
 from contextlib import contextmanager

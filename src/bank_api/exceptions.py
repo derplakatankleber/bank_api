@@ -1,4 +1,5 @@
 """Custom exceptions for the comdirect API client."""
+
 from __future__ import annotations
 
 from typing import Any, Optional

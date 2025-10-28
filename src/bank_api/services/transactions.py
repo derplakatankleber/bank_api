@@ -1,7 +1,8 @@
 """Transaction related service classes."""
+
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from ..client.banking import BankingClient
 from ..models.banking import ListResourceAccountTransaction
@@ -46,7 +47,7 @@ class TransactionService:
             repository.upsert_transactions(response.values, account_id)
         return response
 
-    def list_cached_transactions(self, account_id: str) -> list[dict[str, object]]:
+    def list_cached_transactions(self, account_id: str) -> list[dict[str, Any]]:
         """Return transactions stored in the persistence layer for the given account."""
 
         with self._session_manager.session_scope() as session:

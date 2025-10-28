@@ -1,7 +1,8 @@
 """Shared data models for the comdirect REST API."""
+
 from __future__ import annotations
 
-from datetime import date
+import datetime as dt
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
@@ -15,9 +16,9 @@ class AmountValue(BaseModel):
     unit: str = Field(..., min_length=3, max_length=3, description="Currency or amount unit")
 
     @field_validator("value", mode="before")
-    def _coerce_decimal(cls, value: Any) -> Decimal:
+    def _coerce_decimal(cls, value: Any) -> Decimal | None:
         if value is None:
-            return value
+            return None
         return Decimal(str(value))
 
 
@@ -37,13 +38,13 @@ class EnumText(BaseModel):
 class DateString(BaseModel):
     """Date without time information."""
 
-    date: date
+    date: dt.date
 
     @field_validator("date", mode="before")
-    def _parse_date(cls, value: Any) -> date:
-        if isinstance(value, date):
+    def _parse_date(cls, value: Any) -> dt.date:
+        if isinstance(value, dt.date):
             return value
-        return date.fromisoformat(str(value))
+        return dt.date.fromisoformat(str(value))
 
 
 class PagingInfo(BaseModel):
@@ -59,7 +60,7 @@ class AggregatedInfo(BaseModel):
     data: Dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="before")
-    def _ensure_dict(cls, value: Any):
+    def _ensure_dict(cls, value: Any) -> dict[str, Any]:
         if value is None:
             return {"data": {}}
         if isinstance(value, dict) and "data" not in value:

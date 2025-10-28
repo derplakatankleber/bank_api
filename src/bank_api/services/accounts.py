@@ -1,4 +1,5 @@
 """Account related service classes."""
+
 from __future__ import annotations
 
 from typing import Optional
@@ -62,7 +63,11 @@ class AccountService:
         with self._session_manager.session_scope() as session:
             repository = PositionRepository(session)
             positions = repository.list_positions()
-            return [AccountBalance.model_validate(position.raw) for position in positions if position.raw]
+            return [
+                AccountBalance.model_validate(position.raw)
+                for position in positions
+                if position.raw
+            ]
 
     @staticmethod
     def _map_balance(balance: AccountBalance) -> dict[str, object]:

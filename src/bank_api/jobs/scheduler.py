@@ -1,4 +1,5 @@
 """Utilities for scheduling background data refresh jobs."""
+
 from __future__ import annotations
 
 from typing import Any, Callable, Optional
@@ -95,7 +96,9 @@ class DataRefreshScheduler:
         self._scheduler.add_job(_job, trigger=trigger, id=job_name, replace_existing=True)
         return job_name
 
-    def _run_with_logging(self, job_name: str, func: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
+    def _run_with_logging(
+        self, job_name: str, func: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> None:
         with self._session_manager.session_scope() as session:
             repo = SyncLogRepository(session)
             log = repo.create(job_name, "running")
