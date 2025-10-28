@@ -26,7 +26,7 @@ The repository can be used as a starting point for building automation around th
 
 ## Requirements
 
-- Python 3.10 or later
+- Python 3.12 or later
 - SQLite (bundled with Python, used by default for persistence)
 - (Optional) Access to the comdirect sandbox for running the live test suite
 
