@@ -1,0 +1,22 @@
+{
+  "name": "bank_api-node-migration",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plain JavaScript Node.js migration of the bank_api project.",
+  "main": "node/src/api/app.js",
+  "bin": {
+    "bank-api-node": "node/bin/bank-api.js"
+  },
+  "scripts": {
+    "start": "node node/src/api/app.js",
+    "test": "node --test node/test/clients.test.js node/test/services.test.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "ejs": "^3.1.0",
+    "express": "^4.19.0"
+  },
+  "engines": {
+    "node": ">=18.19"
+  }
+}

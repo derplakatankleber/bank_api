@@ -1,131 +1,127 @@
 # bank_api
 
-A Python toolkit and service layer that wraps the comdirect REST API. The project ships with:
+A dependency-light Node.js service layer that wraps parts of the comdirect REST API.
 
-- A reusable `bank_api` package that models comdirect banking resources and handles authenticated HTTP calls.
-- A FastAPI application with an HTML dashboard for configuring credentials, reviewing cached account balances, managing local orders, and inspecting a depot overview.
-- A Typer-based CLI for logging in, fetching balances, and exporting transactions.
-- A persistence layer backed by SQLite for cached data, configuration, and locally tracked orders.
+The project ships with:
 
-The repository can be used as a starting point for building automation around the comdirect APIs or as a reference implementation when exploring the documentation stored in `comdirect_docu/`.
+- a reusable comdirect client with OAuth password-grant support and retry/backoff handling,
+- an Express REST API for cached balances and transactions,
+- an HTML dashboard for configuration, local orders and depot overview,
+- SQLite persistence for cached data, configuration, sync logs and local orders,
+- a small CLI for login, balance listing and transaction CSV export,
+- Node's built-in test runner.
 
-## Repository layout
+## Repository Layout
 
-```
+```text
 .
-├── docs/                   # Additional design notes and diagrams
-├── src/bank_api/           # Python package source code
-│   ├── api/                # FastAPI routers, dependencies, and HTML templates
-│   ├── cli/                # Typer CLI entry point and commands
-│   ├── client/             # HTTP clients that speak to comdirect endpoints
-│   ├── persistence/        # SQLAlchemy models and repositories
-│   └── services/           # Business logic used by the API, CLI, and UI
-├── tests/                  # Unit tests and optional live sandbox tests
-└── comdirect_docu/         # Official API documentation for quick reference
+├── node/                   # Node.js implementation
+│   ├── bin/                # CLI entry point
+│   ├── public/             # Static assets
+│   ├── src/                # API, client, services, persistence and jobs
+│   ├── test/               # Node tests
+│   └── views/              # EJS templates
+├── comdirect_docu/         # comdirect API reference material
+├── migration.md            # Migration history and remaining follow-up notes
+├── package.json
+└── Dockerfile
 ```
 
 ## Requirements
 
-- Python 3.12 or later
-- SQLite (bundled with Python, used by default for persistence)
-- (Optional) Access to the comdirect sandbox for running the live test suite
+- Node.js 18.19 or later
+- npm
+- SQLite support through `better-sqlite3`
+- comdirect OAuth credentials: `client_id`, `client_secret`, `username`, `password`
 
 ## Installation
 
-It is recommended to work inside a virtual environment:
-
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .[dev]
+npm install
 ```
-
-The editable install exposes the `bank_api` package, CLI entry point, and development tooling such as `pytest`, `ruff`, and `mypy`.
 
 ## Configuration
 
-### FastAPI service
-
-The web application reads a handful of environment variables at startup:
+The Node service reads these environment variables:
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `BANK_API_SESSION_SECRET` | Key used by the session middleware that powers the HTML dashboard. | `insecure-development-secret` |
-| `BANK_API_KEY` | API key required by the REST endpoints (passed via `X-API-Key`). | *(not set — API requests will fail until configured)* |
+| `PORT` | HTTP port for the Express server. | `3000` |
+| `BANK_API_DB` | SQLite database path. | `bank_data.db` |
+| `BANK_APP_KEY` | Optional override for the generated app key required by REST endpoints via `X-App-Key`. | generated on first start |
+| `BANK_API_SESSION_SECRET` | Secret for signed dashboard session cookies. | `insecure-development-secret` |
+| `BANK_API_URL` | comdirect API base URL used by banking endpoints. | `https://api.comdirect.de/api/` |
+| `COMDIRECT_OAUTH_URL` | comdirect OAuth token host. | `https://api.comdirect.de` |
+| `COMDIRECT_CLIENT_ID` | comdirect OAuth client ID. | from dashboard config |
+| `COMDIRECT_CLIENT_SECRET` | comdirect OAuth client secret. | from dashboard config |
+| `COMDIRECT_USERNAME` | comdirect username / Zugangsnummer. | from dashboard config |
+| `COMDIRECT_PASSWORD` | comdirect password/PIN. | from dashboard config |
 
-A SQLite database file named `bank_data.db` is created in the project root the first time the app or services run. Override the location by instantiating `DatabaseConfig(url="sqlite:///path/to/db.sqlite")` and passing it to the relevant services.
+A local SQLite file is created on first start. It is ignored by git. If `BANK_APP_KEY` is not set, the app creates and stores a random app key automatically.
 
-### CLI
+You can enter comdirect credentials in `http://localhost:3000/login` or provide them through environment variables. Environment variables take precedence over stored dashboard values for OAuth.
 
-The CLI persists its configuration beneath the OS-specific application directory (for example `~/.config/bank_api/config.json`). Commands respect the following environment variables when present:
-
-| Variable | Purpose |
-| --- | --- |
-| `BANK_API_URL` | Override the base URL used for HTTP calls. |
-| `BANK_API_KEY` or `BANK_API_CLI_KEY` | Provide the API key without storing it on disk. |
-
-Run `bank-api login` once to interactively store the API URL and key.
-
-### Live sandbox tests
-
-The optional smoke tests under `tests/live/` hit the comdirect sandbox. Set these variables to enable the suite:
-
-- `COMDIRECT_SANDBOX_USER`
-- `COMDIRECT_SANDBOX_TOKEN`
-- `COMDIRECT_SANDBOX_BASE_URL` (optional, defaults to `https://sandbox-api.comdirect.de/api/`)
-
-If any variable is missing the tests are skipped automatically.
-
-## Running the FastAPI server
-
-Launch the development server with uvicorn:
+## Running The Server
 
 ```bash
-uvicorn bank_api.api.app:app --reload
+npm start
 ```
 
-Navigate to `http://localhost:8000/login` to enter your comdirect user ID, account ID, and API key. After authentication you can:
+Open `http://localhost:3000/login` to configure:
 
-- Review a dashboard summarising cached balances and recent orders.
-- Update stored configuration values on the *Configuration* page.
-- Create, list, and update locally tracked orders under *Orders*.
-- Inspect the depot overview showing account totals grouped by currency.
+- local `App Key`, generated automatically on first start,
+- comdirect `Client ID`,
+- comdirect `Client Secret`,
+- comdirect `Username`,
+- comdirect `Password/PIN`,
+- optional `Account ID` returned as `accountId` from balances.
 
-The REST endpoints remain available under `/accounts` and `/transactions` for programmatic access, protected by the configured API key.
+Balances use the comdirect literal user path by default:
 
-## Using the CLI
+```text
+/banking/clients/user/v2/accounts/balances
+```
 
-The CLI becomes available as the `bank-api` command after installation. Common workflows include:
+REST endpoints are protected with `X-App-Key`:
 
 ```bash
-# Store the API base URL and key (prompts interactively)
-bank-api login
-
-# Fetch balances for a user and display a chart
-bank-api balances <USER_ID> --show-chart
-
-# Export transactions for an account to CSV
-bank-api export-transactions <ACCOUNT_ID> --output-csv my_transactions.csv
+curl -H "X-App-Key: $BANK_APP_KEY" http://localhost:3000/accounts/user/balances
+curl -H "X-App-Key: $BANK_APP_KEY" http://localhost:3000/accounts/<ACCOUNT_ID>/transactions
 ```
 
-Use `bank-api --help` or `bank-api balances --help` to explore additional options.
+## CLI
 
-## Running tests
-
-Run the unit test suite with:
+The CLI is exposed as `bank-api-node` from `package.json`.
 
 ```bash
-pytest
+# Store REST API URL and app key locally
+node node/bin/bank-api.js login --app-key <APP_KEY> --api-url http://localhost:3000
+
+# Fetch balances for the current authenticated comdirect user
+node node/bin/bank-api.js balances user --refresh
+
+# Export transactions after you know the accountId
+node node/bin/bank-api.js export-transactions <ACCOUNT_ID> --refresh --output-csv transactions.csv
 ```
 
-All live sandbox tests are marked with `pytest -m live`. To exercise only the mocked tests (no external dependencies), use:
+The CLI reads `BANK_API_URL` and `BANK_APP_KEY` when present. Otherwise it uses `~/.config/bank_api/config.json`.
+
+## Tests
 
 ```bash
-pytest -m "not live"
+npm test
 ```
 
-Ensure you reinstall the project (`pip install -e .[dev]`) after modifying dependencies so that the test environment picks up the changes.
+The current Node tests cover the comdirect client behavior plus configuration and order services. Live sandbox tests are still listed as an open migration item in `migration.md`.
 
-## Further reading
+## Docker
 
-Detailed API specifications, including authentication requirements and schema definitions, are available inside the `comdirect_docu/` directory. These documents underpin the models and workflows implemented in this repository.
+```bash
+docker compose up --build
+```
+
+The container exposes port `3000` and stores SQLite data in the `bank-api-data` volume.
+
+## Further Reading
+
+Detailed comdirect API specifications are available inside `comdirect_docu/`.

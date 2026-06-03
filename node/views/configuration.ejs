@@ -1,0 +1,44 @@
+<%- include("partials/header", { title: "Configuration - Bank Control Center" }) %>
+<section class="card">
+  <h2>Connection settings</h2>
+  <% if (saved) { %><div class="alert alert-success">Configuration saved.</div><% } %>
+  <form method="post" action="/configuration" class="form-grid">
+    <label>
+      App Key
+      <span class="field-help">Local key for this app's REST API, sent as <code>X-App-Key</code>. Generated automatically on first start.</span>
+      <input type="text" name="app_key" value="<%= configuration.app_key || "" %>">
+    </label>
+    <label>
+      Client ID
+      <span class="field-help">comdirect OAuth client ID from the developer/API credentials.</span>
+      <input type="text" name="client_id" value="<%= configuration.client_id || "" %>">
+    </label>
+    <label>
+      Client Secret
+      <span class="field-help">comdirect OAuth client secret. It is stored locally in the SQLite database.</span>
+      <input type="password" name="client_secret" value="<%= configuration.client_secret || "" %>">
+    </label>
+    <label>
+      Username
+      <span class="field-help">comdirect username / Zugangsnummer used for the OAuth password grant.</span>
+      <input type="text" name="username" value="<%= configuration.username || "" %>">
+    </label>
+    <label>
+      Password / PIN
+      <span class="field-help">comdirect password/PIN for OAuth. It is stored locally unless you provide it via environment variable.</span>
+      <input type="password" name="password" value="<%= configuration.password || "" %>">
+    </label>
+    <label>
+      Account ID
+      <span class="field-help">Optional. Leave empty until you have fetched balances; comdirect returns this as <code>accountId</code>.</span>
+      <input type="text" name="account_id" value="<%= configuration.account_id || "" %>">
+    </label>
+    <label>
+      OAuth URL
+      <span class="field-help">Token host, usually <code>https://api.comdirect.de</code>.</span>
+      <input type="url" name="oauth_url" value="<%= configuration.oauth_url || "https://api.comdirect.de" %>">
+    </label>
+    <button type="submit">Save changes</button>
+  </form>
+</section>
+<%- include("partials/footer") %>

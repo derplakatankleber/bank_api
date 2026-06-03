@@ -1,0 +1,25 @@
+<%- include("partials/header", { title: "Depot - Bank Control Center" }) %>
+<section class="card">
+  <h2>Depot overview</h2>
+  <% if (balances.length) { %>
+  <table class="data-table">
+    <thead><tr><th>Account</th><th>Amount</th><th>Currency</th></tr></thead>
+    <tbody>
+      <% for (const balance of balances) { %>
+      <tr><td><%= balance.account_id || "n/a" %></td><td><%= balance.amount ?? "n/a" %></td><td><%= balance.currency || "n/a" %></td></tr>
+      <% } %>
+    </tbody>
+  </table>
+  <div class="totals">
+    <h3>Totals</h3>
+    <ul>
+      <% for (const [currency, amount] of Object.entries(totals)) { %>
+      <li><%= currency %> <%= amount.toFixed(2) %></li>
+      <% } %>
+    </ul>
+  </div>
+  <% } else { %>
+  <p>No balances available. Import data using the CLI synchronisation commands.</p>
+  <% } %>
+</section>
+<%- include("partials/footer") %>

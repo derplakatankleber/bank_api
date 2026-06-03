@@ -1,23 +1,22 @@
 # syntax=docker/dockerfile:1
-FROM python:3.11-slim AS base
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+FROM node:20-bookworm-slim AS base
 
 WORKDIR /app
 
-RUN adduser --disabled-password --gecos "" bankapi && \
-    apt-get update && apt-get install --no-install-recommends -y build-essential && \
-    rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
-COPY pyproject.toml README.md ./
-COPY src ./src
+COPY node ./node
+COPY migration.md README.md ./
 
-RUN pip install --upgrade pip && \
-    pip install .
+ENV NODE_ENV=production \
+    PORT=3000 \
+    BANK_API_DB=/app/data/bank_data.db
 
-USER bankapi
+RUN mkdir -p /app/data && chown -R node:node /app
 
-EXPOSE 8000
+USER node
 
-CMD ["uvicorn", "bank_api.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 3000
+
+CMD ["node", "node/src/api/app.js"]

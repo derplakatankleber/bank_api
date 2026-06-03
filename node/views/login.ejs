@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login - Bank Control Center</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body class="login-body">
+    <section class="login-panel">
+      <h1>Bank Control Center</h1>
+      <p class="intro">Configure the local app key and your comdirect OAuth credentials.</p>
+      <% if (error) { %>
+      <div class="alert alert-error"><%= error %></div>
+      <% } %>
+      <form method="post" action="/login" class="login-form">
+        <label>
+          App Key
+          <span class="field-help">Local key for this app's REST API, sent as <code>X-App-Key</code>. Generated automatically on first start.</span>
+          <input type="text" name="app_key" value="<%= configuration.app_key || "" %>" required>
+        </label>
+        <label>
+          Client ID
+          <span class="field-help">comdirect OAuth client ID from the developer/API credentials.</span>
+          <input type="text" name="client_id" value="<%= configuration.client_id || "" %>" required>
+        </label>
+        <label>
+          Client Secret
+          <span class="field-help">comdirect OAuth client secret. It is stored locally in the SQLite database.</span>
+          <input type="password" name="client_secret" value="<%= configuration.client_secret || "" %>" required>
+        </label>
+        <label>
+          Username
+          <span class="field-help">comdirect username / Zugangsnummer used for the OAuth password grant.</span>
+          <input type="text" name="username" value="<%= configuration.username || "" %>" required>
+        </label>
+        <label>
+          Password / PIN
+          <span class="field-help">comdirect password/PIN for OAuth. It is stored locally unless you provide it via environment variable.</span>
+          <input type="password" name="password" value="<%= configuration.password || "" %>" required>
+        </label>
+        <label>
+          Account ID
+          <span class="field-help">Optional. Leave empty until you have fetched balances; comdirect returns this as <code>accountId</code>.</span>
+          <input type="text" name="account_id" value="<%= configuration.account_id || "" %>">
+        </label>
+        <label>
+          OAuth URL
+          <span class="field-help">Token host, usually <code>https://api.comdirect.de</code>.</span>
+          <input type="url" name="oauth_url" value="<%= configuration.oauth_url || "https://api.comdirect.de" %>" required>
+        </label>
+        <button type="submit">Login</button>
+      </form>
+    </section>
+  </body>
+</html>

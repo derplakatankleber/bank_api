@@ -1,115 +1,88 @@
-# Operations Guide
+# Operations
 
-This document describes how to run the `bank-api` service securely in different environments and how to work with the accompanying automation.
+This project runs as a Node.js service.
 
-## Table of contents
+## Local Development
 
-1. [Local development](#local-development)
-2. [Test strategy](#test-strategy)
-3. [Continuous integration](#continuous-integration)
-4. [Containerisation](#containerisation)
-5. [Infrastructure as Code](#infrastructure-as-code)
-6. [Security practices](#security-practices)
-7. [Operational playbooks](#operational-playbooks)
-
-## Local development
-
-### Prerequisites
-
-- Python 3.11 or newer
-- `pip` and `virtualenv`
-- Docker (for container workflows)
-- Terraform 1.5+ (for IaC workflows)
-
-### Setup
+Install dependencies:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install .[dev]
+npm install
 ```
 
-Run the mocked test suite:
+Run tests:
 
 ```bash
-pytest -m "mocked"
+npm test
 ```
 
-To execute the optional live sandbox suite you must supply valid comdirect sandbox credentials and pass `--run-live`:
+Start the service:
 
 ```bash
-export COMDIRECT_SANDBOX_USER=your-user
-export COMDIRECT_SANDBOX_TOKEN=your-token
-pytest --run-live -m "live"
+npm start
 ```
 
-## Test strategy
+The service listens on `http://localhost:3000` by default.
 
-- **Mocked tests** simulate HTTP responses for deterministic, fast feedback.
-- **Live tests** (opt-in) reach the comdirect sandbox. They are skipped unless `--run-live` is set or the CI workflow is triggered manually with the `run_live` input. The tests expect:
-  - `COMDIRECT_SANDBOX_USER`
-  - `COMDIRECT_SANDBOX_TOKEN`
-  - optional `COMDIRECT_SANDBOX_BASE_URL` (defaults to the documented sandbox endpoint)
+## Runtime Configuration
 
-## Continuous integration
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `PORT` | HTTP port for Express. | `3000` |
+| `BANK_API_DB` | SQLite database file. | `bank_data.db` |
+| `BANK_APP_KEY` | Optional override for the generated app key. | generated on first start |
+| `BANK_API_SESSION_SECRET` | Secret for signed dashboard cookies. | `insecure-development-secret` |
+| `BANK_API_URL` | comdirect API base URL. | `https://api.comdirect.de/api/` |
+| `COMDIRECT_OAUTH_URL` | comdirect OAuth token host. | `https://api.comdirect.de` |
+| `COMDIRECT_CLIENT_ID` | comdirect OAuth client ID. | dashboard config |
+| `COMDIRECT_CLIENT_SECRET` | comdirect OAuth client secret. | dashboard config |
+| `COMDIRECT_USERNAME` | comdirect username / Zugangsnummer. | dashboard config |
+| `COMDIRECT_PASSWORD` | comdirect password/PIN. | dashboard config |
 
-GitHub Actions workflow [`ci.yml`](../.github/workflows/ci.yml) runs on pushes and pull requests:
+The REST API requires `X-App-Key`. comdirect OAuth credentials can be entered in the dashboard or supplied via environment variables.
 
-1. **Lint**: `ruff check .` and `black --check .`
-2. **Type check**: `mypy src`
-3. **Tests**: `pytest -m "mocked"`
-4. **Live sandbox** (manual opt-in): `pytest --run-live -m "live"` with secrets injected via repository settings. Trigger the workflow manually and set the `run_live` input to `true` to enable this job.
+## Docker
 
-All jobs install dependencies using the `dev` extra defined in `pyproject.toml`.
-
-## Containerisation
-
-A hardened [`Dockerfile`](../Dockerfile) builds a non-root image that runs the FastAPI application via Uvicorn. A companion [`docker-compose.yml`](../docker-compose.yml) file orchestrates the API with a PostgreSQL database:
-
-- Secrets (database password, API keys) are injected through environment variables. Use an `.env` file locally and set them as secrets in production orchestrators.
-- The API container publishes port `8000` by default and exposes a `/health` endpoint used for health checks.
-- Volumes persist application artefacts and database state. Consider storing the database volume on encrypted storage in production.
-
-To run locally:
+Build and start:
 
 ```bash
-cp .env.example .env  # create a file with POSTGRES_PASSWORD, BANK_API_SECRET_KEY, etc.
 docker compose up --build
 ```
 
-## Infrastructure as Code
+The container exposes port `3000` and persists SQLite data in the `bank-api-data` volume.
 
-Terraform configuration in [`infra/terraform`](../infra/terraform) provisions the same topology via the Docker provider:
+Healthcheck endpoint:
 
-```bash
-cd infra/terraform
-terraform init
-terraform apply \
-  -var="comdirect_user=$COMDIRECT_SANDBOX_USER" \
-  -var="comdirect_token=$COMDIRECT_SANDBOX_TOKEN" \
-  -var="secret_key=$(openssl rand -hex 32)"
+```text
+GET /health
 ```
 
-The module:
+Expected response:
 
-- Builds the container image from the repository `Dockerfile`.
-- Creates an isolated Docker network and a persistent PostgreSQL volume.
-- Launches hardened API and database containers with the supplied secrets.
+```json
+{"status":"ok"}
+```
 
-For production deployments substitute the Docker provider with the target platform (e.g. AWS ECS) while retaining the variable naming to keep secrets handling consistent.
+## CLI
 
-## Security practices
+Store API URL and app key:
 
-- **Secret management**: never commit secrets to version control. Use GitHub Action secrets, Docker secret stores, or cloud vaults.
-- **Network**: expose only the API port required by clients and restrict ingress via firewalls or reverse proxies.
-- **TLS**: terminate TLS using a reverse proxy (e.g. Traefik, Nginx) or a managed load balancer. The sample Compose file assumes TLS termination upstream.
-- **Least privilege**: the Docker image runs as a non-root user. Extend this by configuring read-only root filesystems or seccomp profiles where possible.
-- **Dependency hygiene**: CI runs `ruff`, `black`, and `mypy` on every change. Add dependency scanning (e.g. Dependabot) for automated updates.
+```bash
+node node/bin/bank-api.js login --app-key <APP_KEY> --api-url http://localhost:3000
+```
 
-## Operational playbooks
+Fetch balances for the authenticated comdirect user:
 
-- **Health monitoring**: poll `/health` and add synthetic transactions against the sandbox environment as part of observability dashboards.
-- **Backups**: snapshot the PostgreSQL volume regularly. When using cloud databases, configure automated backups and PITR.
-- **Incident response**: revoke compromised sandbox tokens immediately and rotate the `BANK_API_SECRET_KEY`. Update Terraform variables or Compose `.env` files accordingly and redeploy.
-- **Disaster recovery**: keep Terraform state in a remote backend (S3 + DynamoDB or Terraform Cloud) and store Docker images in a secure registry. Re-apply the Terraform module or redeploy via Compose to restore service.
+```bash
+node node/bin/bank-api.js balances user --refresh
+```
+
+Export transactions after you know the accountId:
+
+```bash
+node node/bin/bank-api.js export-transactions <ACCOUNT_ID> --refresh --output-csv transactions.csv
+```
+
+## Remaining Operational Gap
+
+A live comdirect sandbox smoke test still needs to be added for the Node implementation before production use.

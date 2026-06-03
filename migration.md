@@ -471,10 +471,58 @@ Gegenmassnahme:
 
 Der beste erste Schritt ist ein kleiner, lauffaehiger Node-Schnitt:
 
-1. `package.json` anlegen.
-2. Express-App mit `/health` erstellen.
-3. `base-client.js` und `banking-client.js` portieren.
-4. Tests fuer Client-URL, Header, Query-Parameter und Fehlerfaelle schreiben.
-5. Danach erst Persistence und Weboberflaeche angehen.
+1. `package.json` anlegen. `[erledigt]`
+2. Express-App mit `/health` erstellen. `[erledigt]`
+3. `base-client.js` und `banking-client.js` portieren. `[erledigt]`
+4. Tests fuer Client-URL, Header, Query-Parameter und Fehlerfaelle schreiben. `[erledigt]`
+5. Persistence-Schema und erste Repositories anlegen. `[erledigt]`
+6. Danach Weboberflaeche, CLI und Scheduler vollstaendig portieren. `[offen]`
 
 Damit entsteht schnell ein pruefbarer Kern, ohne das bestehende Python-Projekt zu gefaehrden.
+
+## Abarbeitung der Restmigration
+
+Diese Liste konkretisiert die Elemente, die vor dem Entfernen der Python-Version erledigt sein muessen.
+
+| Bereich | Status | Node-Ziel |
+| --- | --- | --- |
+| comdirect Client | erledigt | `node/src/client/*` |
+| REST-Endpunkte fuer Accounts und Transactions | erledigt | `node/src/api/accounts.routes.js`, `node/src/api/transactions.routes.js` |
+| SQLite-Schema und Basis-Repositories | erledigt | `node/src/persistence/*` |
+| Configuration-Service | erledigt | `node/src/services/configuration-service.js` |
+| Orders-Service | erledigt | `node/src/services/orders-service.js` |
+| Web-Login und signierte Cookie-Session | erledigt | `node/src/api/session.js`, `node/src/api/web.routes.js` |
+| Dashboard, Configuration, Orders, Order-Form, Depot | erledigt | `node/views/*.ejs` |
+| Scheduler fuer periodische Refresh-Jobs | erledigt | `node/src/jobs/scheduler.js` |
+| CLI fuer Login, Balances und Transaction-Export | erledigt | `node/bin/bank-api.js` |
+| Node-Service-Tests | erledigt | `node/test/services.test.js` |
+| Dockerfile und docker-compose auf Node umstellen | erledigt | Python-Start entfernen, Node-Start verwenden |
+| README auf Node-Betrieb umstellen | erledigt | Installation, Start, CLI und Tests dokumentieren |
+| Live-Sandbox-Tests in Node | offen | optionaler Smoke-Test analog `tests/live` |
+| Python-Dateien entfernen | erledigt | `src/`, `tests/` und `pyproject.toml` entfernt |
+
+Der naechste harte Schnitt ist Docker/README. Danach kann die Python-Version entfernt werden, wenn der Node-Server, die Weboberflaeche, CLI-Kommandos und mindestens ein Sandbox-Smoke-Test erfolgreich geprueft wurden.
+
+## Python Removal
+
+The Python implementation has been removed from the repository.
+
+Removed paths:
+
+- `src/bank_api/`
+- `tests/`
+- `pyproject.toml`
+
+The active runtime is now the Node.js implementation under `node/`. Remaining migration follow-up is limited to live/sandbox smoke testing against comdirect.
+
+## comdirect OAuth Credentials
+
+The Node implementation now accepts comdirect OAuth credentials through the dashboard or environment variables:
+
+- `COMDIRECT_CLIENT_ID`
+- `COMDIRECT_CLIENT_SECRET`
+- `COMDIRECT_USERNAME`
+- `COMDIRECT_PASSWORD`
+- `COMDIRECT_OAUTH_URL` (optional, defaults to `https://api.comdirect.de`)
+
+The app uses the OAuth password grant to fetch an access token and attaches it as `Authorization: Bearer ...` to comdirect API requests. Balance calls can use the comdirect literal `user`; transaction calls still require an `accountId` returned by the balances endpoint.

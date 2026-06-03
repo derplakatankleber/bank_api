@@ -1,0 +1,60 @@
+<%- include("partials/header", { title: "Dashboard - Bank Control Center" }) %>
+<section class="grid">
+  <article class="card">
+    <h2>Configuration</h2>
+    <dl>
+      <dt>App Key</dt>
+      <dd><%= configuration.app_key || "not set" %></dd>
+      <dt>Client ID</dt>
+      <dd><%= configuration.client_id || "not set" %></dd>
+      <dt>Username</dt>
+      <dd><%= configuration.username || "not set" %></dd>
+      <dt>Account ID</dt>
+      <dd><%= configuration.account_id || "not set" %></dd>
+    </dl>
+    <a href="/configuration" class="button">Update configuration</a>
+  </article>
+
+  <article class="card">
+    <h2>Recent Orders</h2>
+    <% if (orders.length) { %>
+    <ul class="order-list">
+      <% for (const order of orders) { %>
+      <li>
+        <strong><%= order.instrument %></strong>
+        <span class="meta"><%= capitalize(order.side) %> <%= order.quantity %> @ <%= order.limit_price || "Market" %></span>
+        <span class="status status-<%= order.status %>"><%= capitalize(order.status) %></span>
+      </li>
+      <% } %>
+    </ul>
+    <a class="button" href="/orders">View all orders</a>
+    <% } else { %>
+    <p>No orders captured yet.</p>
+    <a class="button" href="/orders/new">Create order</a>
+    <% } %>
+  </article>
+
+  <article class="card wide">
+    <h2>Account Balances</h2>
+    <% if (balances.length) { %>
+    <table class="data-table">
+      <thead>
+        <tr><th>Account</th><th>Amount</th><th>Currency</th></tr>
+      </thead>
+      <tbody>
+        <% for (const balance of balances) { %>
+        <tr>
+          <td><%= balance.account_id || "n/a" %></td>
+          <td><%= balance.amount ?? "n/a" %></td>
+          <td><%= balance.currency || "n/a" %></td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+    <a class="button" href="/depot">View depot</a>
+    <% } else { %>
+    <p>No cached balances available. Run a sync from the CLI to populate data.</p>
+    <% } %>
+  </article>
+</section>
+<%- include("partials/footer") %>
