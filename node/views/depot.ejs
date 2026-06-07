@@ -1,6 +1,18 @@
 <%- include("partials/header", { title: "Depot - Bank Control Center" }) %>
+<% if (refreshed) { %>
+  <div class="alert alert-success">Balances refreshed.</div>
+<% } %>
+<% if (error) { %>
+  <div class="alert alert-error"><%= error %></div>
+<% } %>
 <section class="card">
-  <h2>Depot overview</h2>
+  <div class="card-header">
+    <h2>Depot overview</h2>
+    <form method="post" action="/balances/refresh" class="inline-form">
+      <input type="hidden" name="redirect_to" value="/depot">
+      <button type="submit">Refresh</button>
+    </form>
+  </div>
   <% if (balances.length) { %>
   <table class="data-table">
     <thead><tr><th>Account</th><th>Amount</th><th>Currency</th></tr></thead>
@@ -19,7 +31,7 @@
     </ul>
   </div>
   <% } else { %>
-  <p>No balances available. Import data using the CLI synchronisation commands.</p>
+  <p>No balances available. Use Refresh to fetch current balances.</p>
   <% } %>
 </section>
 <%- include("partials/footer") %>

@@ -9,7 +9,9 @@
   },
   "scripts": {
     "start": "node node/src/api/app.js",
-    "test": "node --test node/test/clients.test.js node/test/services.test.js"
+    "test": "node --test node/test/clients.test.js node/test/services.test.js",
+    "status": "node node/bin/server-status.js",
+    "stop": "node node/bin/server-stop.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",

@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("node:path");
 const { BankingClient, ComdirectAPIError, OAuthClient } = require("../client");
 const { openDatabase } = require("../persistence/database");
+const { createSyncLogRepository } = require("../persistence/repositories");
 const { AccountService } = require("../services/accounts-service");
 const { ConfigurationService } = require("../services/configuration-service");
 const { OAuthTokenService } = require("../services/oauth-token-service");
@@ -29,6 +30,7 @@ function createApp(options = {}) {
   const accountService = new AccountService(client, db, configurationService);
   const transactionService = new TransactionService(client, db);
   const orderService = new OrderService(db);
+  const syncLogRepository = createSyncLogRepository(db);
 
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "..", "..", "views"));
@@ -44,7 +46,13 @@ function createApp(options = {}) {
   const requireAppKey = createRequireAppKey(configurationService);
   app.use("/accounts", requireAppKey, createAccountsRouter(accountService));
   app.use("/accounts", requireAppKey, createTransactionsRouter(transactionService));
-  app.use(sessionMiddleware(), createWebRouter({ accountService, configurationService, orderService, tokenService }));
+  app.use(sessionMiddleware(), createWebRouter({
+    accountService,
+    configurationService,
+    orderService,
+    syncLogRepository,
+    tokenService
+  }));
   app.use(errorHandler);
 
   return app;

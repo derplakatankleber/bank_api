@@ -178,6 +178,14 @@ button:focus {
 .status-placed { background: #d8ecff; color: #0f4c81; }
 .status-executed { background: #d9f7e7; color: #12643b; }
 .status-cancelled { background: #ffe1e7; color: #8a1230; }
+.status-running { background: #d8ecff; color: #0f4c81; }
+.status-succeeded { background: #d9f7e7; color: #12643b; }
+.status-failed { background: #ffe1e7; color: #8a1230; }
+
+.log-table td:last-child {
+  max-width: 28rem;
+  overflow-wrap: anywhere;
+}
 
 .form-grid {
   display: grid;

@@ -1,0 +1,36 @@
+<%- include("partials/header", { title: "Logs - Bank Control Center" }) %>
+<section class="card">
+  <div class="card-header">
+    <h2>Logs</h2>
+    <form method="get" action="/logs" class="inline-form">
+      <select name="limit" aria-label="Log limit">
+        <% for (const option of [25, 50, 100, 250, 500]) { %>
+          <option value="<%= option %>" <%= limit === option ? "selected" : "" %>><%= option %></option>
+        <% } %>
+      </select>
+      <button type="submit">Apply</button>
+    </form>
+  </div>
+
+  <% if (logs.length) { %>
+    <table class="data-table log-table">
+      <thead>
+        <tr><th>Started</th><th>Job</th><th>Status</th><th>Finished</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        <% for (const log of logs) { %>
+          <tr>
+            <td><%= log.started_at || "n/a" %></td>
+            <td><%= log.job_name %></td>
+            <td><span class="status status-<%= log.status %>"><%= log.status %></span></td>
+            <td><%= log.finished_at || "-" %></td>
+            <td><%= log.detail || "-" %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <p>No logs available yet.</p>
+  <% } %>
+</section>
+<%- include("partials/footer") %>

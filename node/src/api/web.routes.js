@@ -3,7 +3,7 @@ const { toBalanceSummary } = require("../services/accounts-service");
 
 function createWebRouter(services) {
   const router = express.Router();
-  const { accountService, configurationService, orderService, tokenService } = services;
+  const { accountService, configurationService, orderService, syncLogRepository, tokenService } = services;
 
   router.get("/login", (_req, res) => {
     res.render("login", {
@@ -33,12 +33,28 @@ function createWebRouter(services) {
     res.redirect(303, "/login");
   });
 
-  router.get("/", requireAuthenticated, (_req, res) => {
+  router.get("/", requireAuthenticated, (req, res) => {
     res.render("dashboard", {
       configuration: configurationService.getConfiguration(),
       balances: accountService.listCachedBalances().map(toBalanceSummary),
-      orders: orderService.listOrders().slice(0, 5)
+      orders: orderService.listOrders().slice(0, 5),
+      refreshed: req.query.refreshed === "true",
+      error: req.query.error || null
     });
+  });
+
+  router.post("/balances/refresh", requireAuthenticated, async (req, res, next) => {
+    const redirectPath = sanitizeRedirectPath(req.body.redirect_to) || "/";
+    const log = syncLogRepository.create("manual-balance-refresh", "running");
+    try {
+      await accountService.refreshAccountBalances("user");
+      syncLogRepository.update(log.id, "succeeded", "Fetched account balances for user");
+      res.redirect(303, appendQuery(redirectPath, { refreshed: "true" }));
+    } catch (error) {
+      const detail = formatRefreshError(error);
+      syncLogRepository.update(log.id, "failed", detail);
+      res.redirect(303, appendQuery(redirectPath, { error: detail }));
+    }
   });
 
   router.get("/configuration", requireAuthenticated, (req, res) => {
@@ -67,6 +83,14 @@ function createWebRouter(services) {
   router.get("/orders", requireAuthenticated, (_req, res) => {
     res.render("orders", {
       orders: orderService.listOrders()
+    });
+  });
+
+  router.get("/logs", requireAuthenticated, (req, res) => {
+    const limit = normalizeLogLimit(req.query.limit);
+    res.render("logs", {
+      logs: syncLogRepository.listRecent(limit),
+      limit
     });
   });
 
@@ -99,7 +123,7 @@ function createWebRouter(services) {
     }
   });
 
-  router.get("/depot", requireAuthenticated, (_req, res) => {
+  router.get("/depot", requireAuthenticated, (req, res) => {
     const balances = accountService.listCachedBalances().map(toBalanceSummary);
     const totals = {};
     for (const balance of balances) {
@@ -108,7 +132,12 @@ function createWebRouter(services) {
       }
       totals[balance.currency] = (totals[balance.currency] || 0) + Number(balance.amount);
     }
-    res.render("depot", { balances, totals });
+    res.render("depot", {
+      balances,
+      totals,
+      refreshed: req.query.refreshed === "true",
+      error: req.query.error || null
+    });
   });
 
   return router;
@@ -124,6 +153,62 @@ function readConfigurationBody(req) {
     account_id: req.body.account_id,
     oauth_url: req.body.oauth_url
   };
+}
+
+function sanitizeRedirectPath(value) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return null;
+  }
+  return value.split("?")[0];
+}
+
+function appendQuery(path, params) {
+  const query = new URLSearchParams(params);
+  return path + "?" + query.toString();
+}
+
+function normalizeLogLimit(value) {
+  const limit = Number.parseInt(value || "100", 10);
+  if (Number.isNaN(limit)) {
+    return 100;
+  }
+  return Math.min(500, Math.max(25, limit));
+}
+
+function formatRefreshError(error) {
+  if (error.statusCode && error.response !== undefined && error.response !== null) {
+    return "HTTP " + error.statusCode + ": " + formatComdirectResponse(error.response, error.message);
+  }
+  if (error.response !== undefined && error.response !== null) {
+    return formatComdirectResponse(error.response, error.message);
+  }
+  return error.message || "Unable to refresh balances";
+}
+
+function formatComdirectResponse(response, fallback) {
+  if (typeof response === "string") {
+    return truncate(response.trim()) || fallback || "Unable to refresh balances";
+  }
+  if (Array.isArray(response.messages) && response.messages.length > 0) {
+    const message = response.messages[0];
+    return truncate([message.key, message.message].filter(Boolean).join(" - ")) || fallback;
+  }
+  const directMessage = response.message || response.detail || response.error || response.error_description;
+  if (directMessage) {
+    return truncate(String(directMessage));
+  }
+  try {
+    return truncate(JSON.stringify(response)) || fallback || "Unable to refresh balances";
+  } catch (_error) {
+    return fallback || "Unable to refresh balances";
+  }
+}
+
+function truncate(value) {
+  if (!value) {
+    return null;
+  }
+  return value.length > 500 ? value.slice(0, 497) + "..." : value;
 }
 
 function requireAuthenticated(req, res, next) {

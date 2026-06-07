@@ -4,6 +4,7 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 const { openDatabase } = require("../src/persistence/database");
+const { createSyncLogRepository } = require("../src/persistence/repositories");
 const { ConfigurationService } = require("../src/services/configuration-service");
 const { OrderService } = require("../src/services/orders-service");
 
@@ -82,6 +83,22 @@ test("OrderService rejects unsupported status values", () => {
   const service = new OrderService(db);
 
   assert.throws(() => service.updateOrderStatus(1, "weird"), /Unsupported order status/);
+  db.close();
+});
+
+test("SyncLogRepository lists recent logs", () => {
+  const db = temporaryDatabase();
+  const repository = createSyncLogRepository(db);
+
+  const first = repository.create("first-job", "running");
+  repository.update(first.id, "succeeded", "done");
+  const second = repository.create("second-job", "failed", "boom");
+
+  const logs = repository.listRecent(1);
+
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0].id, second.id);
+  assert.equal(logs[0].detail, "boom");
   db.close();
 });
 

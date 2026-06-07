@@ -155,6 +155,10 @@ function createSyncLogRepository(db) {
 
     get(logId) {
       return db.prepare("SELECT * FROM sync_logs WHERE id = ?").get(logId) || null;
+    },
+
+    listRecent(limit = 100) {
+      return db.prepare("SELECT * FROM sync_logs ORDER BY started_at DESC, id DESC LIMIT ?").all(limit);
     }
   };
 }

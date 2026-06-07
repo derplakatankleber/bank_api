@@ -1,3 +1,4 @@
+const crypto = require("node:crypto");
 const { setTimeout: sleep } = require("node:timers/promises");
 const { ComdirectAPIError } = require("./errors");
 
@@ -17,6 +18,7 @@ class BaseComdirectClient {
     };
     this.timeout = options.timeout || 30000;
     this.getAccessToken = options.getAccessToken;
+    this.sessionId = options.sessionId || crypto.randomUUID();
 
     if (typeof this.fetchImpl !== "function") {
       throw new Error("A fetch implementation is required");
@@ -68,16 +70,27 @@ class BaseComdirectClient {
     }
 
     if (!lastResponse.ok) {
-      throw await this.buildError(lastResponse);
+      throw await this.buildError(lastResponse, method, path);
     }
 
     return lastResponse;
   }
 
   async prepareHeaders(options = {}) {
-    const headers = { ...(options.headers || {}) };
+    const headers = {
+      Accept: "application/json",
+      ...(options.headers || {})
+    };
     if (options.auth !== false && this.getAccessToken && !headers.Authorization) {
       headers.Authorization = `Bearer ${await this.getAccessToken()}`;
+    }
+    if (!headers["x-http-request-info"]) {
+      headers["x-http-request-info"] = JSON.stringify({
+        clientRequestId: {
+          sessionId: this.sessionId,
+          requestId: createRequestId()
+        }
+      });
     }
     return headers;
   }
@@ -104,23 +117,66 @@ class BaseComdirectClient {
     return this.retryConfig.backoffFactor * (2 ** (attempt - 1));
   }
 
-  async buildError(response) {
-    let payload;
+  async buildError(response, method, path) {
+    const text = await response.text();
+    let payload = text;
     try {
-      payload = await response.json();
+      payload = text ? JSON.parse(text) : null;
     } catch (_error) {
-      payload = await response.text();
+      payload = text;
     }
 
-    return new ComdirectAPIError("HTTP " + response.status + " error calling comdirect API", {
+    return new ComdirectAPIError(formatApiErrorMessage(response.status, method, path, payload), {
       statusCode: response.status,
-      response: payload
+      response: payload,
+      request: { method, path }
     });
   }
 }
 
+function formatApiErrorMessage(statusCode, method, path, payload) {
+  const detail = summarizeErrorPayload(payload);
+  const request = [method, path].filter(Boolean).join(" ");
+  const context = request ? " " + request : "";
+  return "HTTP " + statusCode + " error calling comdirect API" + context + (detail ? ": " + detail : "");
+}
+
+function summarizeErrorPayload(payload) {
+  if (!payload) {
+    return null;
+  }
+  if (typeof payload === "string") {
+    return truncate(payload.trim());
+  }
+  if (Array.isArray(payload.messages) && payload.messages.length > 0) {
+    const message = payload.messages[0];
+    return truncate([message.key, message.message].filter(Boolean).join(" - "));
+  }
+  const directMessage = payload.message || payload.detail || payload.error || payload.error_description;
+  if (directMessage) {
+    return truncate(String(directMessage));
+  }
+  try {
+    return truncate(JSON.stringify(payload));
+  } catch (_error) {
+    return null;
+  }
+}
+
+function truncate(value) {
+  if (!value) {
+    return null;
+  }
+  return value.length > 500 ? value.slice(0, 497) + "..." : value;
+}
+
 function normalizeBaseUrl(baseUrl) {
   return baseUrl.replace(/\/+$/, "") + "/";
+}
+
+function createRequestId() {
+  const timestamp = Date.now().toString();
+  return timestamp.slice(-9);
 }
 
 module.exports = {

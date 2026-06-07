@@ -4,6 +4,7 @@ class ComdirectAPIError extends Error {
     this.name = "ComdirectAPIError";
     this.statusCode = options.statusCode;
     this.response = options.response;
+    this.request = options.request;
   }
 }
 

@@ -64,10 +64,14 @@ function requireCredential(value, name) {
 }
 
 async function readJsonOrText(response) {
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
   try {
-    return await response.json();
+    return JSON.parse(text);
   } catch (_error) {
-    return response.text();
+    return text;
   }
 }
 
